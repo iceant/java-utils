@@ -1,4 +1,4 @@
-package com.pointcx.jvm;
+package com.pointcx.jvm.loaders;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
