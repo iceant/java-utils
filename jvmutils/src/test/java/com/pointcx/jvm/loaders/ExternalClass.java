@@ -1,4 +1,4 @@
-package com.pointcx.jvm.classloaders;
+package com.pointcx.jvm.loaders;
 
 public class ExternalClass {
     public String getName(){

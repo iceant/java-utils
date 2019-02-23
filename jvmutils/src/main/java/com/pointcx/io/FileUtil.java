@@ -1,12 +1,15 @@
 package com.pointcx.io;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,6 +36,29 @@ public class FileUtil {
         } finally {
             is.close();
             os.close();
+        }
+    }
+
+    public static String readAsString(InputStream is)throws IOException {
+        StringBuilder sb = new StringBuilder();
+        BufferedReader br = null;
+        try {
+
+            String line = null;
+
+            br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+
+            while ((line = br.readLine()) != null) {
+                sb.append(line);
+                sb.append(System.lineSeparator());
+            }
+
+            return sb.toString();
+
+        } finally {
+            if (br != null) {
+                br.close();
+            }
         }
     }
 

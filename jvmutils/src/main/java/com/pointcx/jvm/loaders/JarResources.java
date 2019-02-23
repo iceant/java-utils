@@ -1,4 +1,4 @@
-package com.pointcx.jvm.classloaders;
+package com.pointcx.jvm.loaders;
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
