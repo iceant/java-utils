@@ -10,14 +10,13 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.file.Paths;
 import java.util.List;
 
 public class ClassPathHackerTest {
 
     static final String EXTERNAL_PATH = "temp";
-    static final String CLASSNAME = "com.pointcx.jvm.classloaders.ExternalClass";
+    static final String CLASSNAME = "com.pointcx.jvm.loaders.ExternalClass";
 
     private String formatClassNameToPath(String className){
         return className.replace('.', '/') + ".class";
@@ -66,12 +65,11 @@ public class ClassPathHackerTest {
         System.out.printf("Adding %s to %s\n", Paths.get(EXTERNAL_PATH).toUri().toURL(), ClassLoader.getSystemClassLoader());
         ClassPathHacker.addUrlToClassLoader(Paths.get(EXTERNAL_PATH).toUri().toURL(), ClassLoader.getSystemClassLoader());
 
-        for(URL url:ClassUtil.listClassPath((URLClassLoader) ClassLoader.getSystemClassLoader())){
+        Object ucp  = ClassUtil.getFieldValue(ClassLoader.getSystemClassLoader(), "ucp");
+
+        for(URL url: (URL[]) ClassUtil.invoke(ucp, "getURLs")){
             System.out.println("path: "+ url);
         }
-
-        URLClassLoader classLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
-
         System.out.println("Try to load class now");
         Class cls = Class.forName(CLASSNAME);
         Object object = cls.newInstance();
