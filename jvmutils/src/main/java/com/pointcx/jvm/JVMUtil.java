@@ -18,12 +18,14 @@ public class JVMUtil {
         try {
             Class ModuleDescriptor = Class.forName("java.lang.module.ModuleDescriptor");
             Method newModule = ModuleDescriptor.getDeclaredMethod("newModule", String.class);
-
             Object moduleBuilder = newModule.invoke(null, moduleName);
             Method opens = moduleBuilder.getClass().getDeclaredMethod("opens", String.class);
             for (String pkg : packages) {
+                System.out.printf("open pkg: %s/%s\n", moduleName, pkg);
                 opens.invoke(moduleBuilder, pkg);
             }
+            Method build = moduleBuilder.getClass().getDeclaredMethod("build");
+            build.invoke(moduleBuilder);
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         } catch (NoSuchMethodException e) {

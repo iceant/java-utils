@@ -34,8 +34,16 @@ public class FileUtil {
                 os.write(buffer, 0, length);
             }
         } finally {
-            is.close();
-            os.close();
+            if(is!=null) {
+                try {
+                    is.close();
+                }catch (Exception err){}
+            }
+            if(os!=null) {
+                try {
+                    os.close();
+                }catch (Exception err){}
+            }
         }
     }
 

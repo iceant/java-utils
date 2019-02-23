@@ -53,18 +53,21 @@ public class ClassPathHacker {
         //  --add-opens java.base/jdk.internal.loader=ALL-UNNAMED
         //
         // ModuleDescriptor.Builder moduleBuilder = ModuleDescriptor.newModule("java.base");
-        // moduleBuilder.opens("jdk.internal.loader");
+        // moduleBuilder.opens("jdk.internal.loader").build();
+
         try {
             Class ModuleDescriptor = Class.forName("java.lang.module.ModuleDescriptor");
             Method newModule = ModuleDescriptor.getDeclaredMethod("newModule", String.class);
 
             Object moduleBuilder = newModule.invoke(null, moduleName);
             Method opens = moduleBuilder.getClass().getDeclaredMethod("opens", String.class);
+            opens.setAccessible(true);
             for (String pkg : packages) {
                 opens.invoke(moduleBuilder, pkg);
             }
         } catch (ClassNotFoundException e) {
             // it's not jdk9 above, ignore it
+            e.printStackTrace();
         } catch (NoSuchMethodException e) {
             e.printStackTrace();
         } catch (IllegalAccessException e) {
@@ -72,12 +75,41 @@ public class ClassPathHacker {
         } catch (InvocationTargetException e) {
             e.printStackTrace();
         }
+
+//        try {
+//            Class ClassType = Class.forName("java.lang.Class");
+//            Class ModuleType = Class.forName("java.lang.Module");
+//            Class ClassLoaderType = Class.forName("java.lang.ClassLoader");
+//            Method getModule = ClassType.getDeclaredMethod("getModule");
+//            getModule.setAccessible(true);
+//            Object baseModule = getModule.invoke(ClassType);
+//            Method 	getSystemClassLoader​ = ClassLoaderType.getDeclaredMethod("getSystemClassLoader");
+//            getSystemClassLoader​.setAccessible(true);
+//            Object classLoader = getSystemClassLoader​.invoke(ClassLoaderType);
+//            Method getUnnamedModule= ClassLoaderType.getDeclaredMethod("getUnnamedModule");
+//            getUnnamedModule.setAccessible(true);
+//            Object unnamedModule = getUnnamedModule.invoke(classLoader);
+//            Method addOpens = ModuleType.getDeclaredMethod("addOpens", new Class[]{String.class, ModuleType});
+//            addOpens.setAccessible(true);
+//            for(String pkg : packages) {
+//                addOpens.invoke(baseModule, pkg, unnamedModule);
+//            }
+//        } catch (ClassNotFoundException e) {
+//            // it's not jdk9 above, ignore it
+//            e.printStackTrace();
+//        } catch (NoSuchMethodException e) {
+//            e.printStackTrace();
+//        } catch (IllegalAccessException e) {
+//            e.printStackTrace();
+//        } catch (InvocationTargetException e) {
+//            e.printStackTrace();
+//        }
     }
 
 
     private static void appendToClasspathForJDK9Above(URL u, ClassLoader classLoader) throws NoSuchMethodException {
-        jdk9AddOpens("java.base", "jdk.internal.loader");
         try {
+            jdk9AddOpens("java.base", "jdk.internal.loader");
             Field ucpField = classLoader.getClass().getDeclaredField("ucp");
             ucpField.setAccessible(true);
             Object ucp = ucpField.get(classLoader);
