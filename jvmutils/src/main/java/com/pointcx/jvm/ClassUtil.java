@@ -5,8 +5,29 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ClassUtil {
+
+    public static <T> Class<T> loadClass(String className) throws ClassNotFoundException{
+        Class cls = null;
+        try {
+            cls = loadClass(className, Thread.currentThread().getContextClassLoader());
+        }catch (ClassNotFoundException cnfe){
+            try {
+                cls = loadClass(className, ClassUtil.class.getClassLoader());
+            }catch (ClassNotFoundException cnfe2){
+                cls = loadClass(className, ClassLoader.getSystemClassLoader());
+            }
+        }
+        return cls;
+    }
+
+    public static <T> Class<T> loadClass(String className, ClassLoader classLoader) throws ClassNotFoundException {
+        if(className==null || classLoader==null) throw new ClassNotFoundException(className);
+        return (Class<T>) classLoader.loadClass(className);
+    }
 
     public static Method getMethod(Class<?> sourceClass, String methodName, Class... paramTypes) {
         Method method = null;
@@ -31,8 +52,8 @@ public class ClassUtil {
         return method;
     }
 
-    public static <T> T invokeStaticMethod(Class<?> sourceClass, String methodName){
-        return invokeStaticMethod(sourceClass, methodName, null, (Object[])null);
+    public static <T> T invokeStaticMethod(Class<?> sourceClass, String methodName) {
+        return invokeStaticMethod(sourceClass, methodName, null, (Object[]) null);
     }
 
     public static <T> T invokeStaticMethod(Class<?> sourceClass, String methodName, Class[] paramTypes, Object... params) {
@@ -51,68 +72,69 @@ public class ClassUtil {
 
 
     public static <T> T invoke(Object instance, String methodName) {
-        return invoke(instance, methodName, null, (Object[])null);
+        return invoke(instance, methodName, null, (Object[]) null);
     }
 
-    public static <T> T invoke(Object instance, String methodName, Class[] paramTypes, Object... params){
+    public static <T> T invoke(Object instance, String methodName, Class[] paramTypes, Object... params) {
         try {
             Method method = instance.getClass().getMethod(methodName, paramTypes);
             method.setAccessible(true);
             return (T) method.invoke(instance, params);
-        }catch (Exception err){
+        } catch (Exception err) {
             throw new RuntimeException(err);
         }
     }
 
-    public static <T> T newInstance(String className){
-        return newInstance(className, Thread.currentThread().getContextClassLoader());
+
+    public static <T> T newInstance(String className) {
+        try {
+            return newInstance(loadClass(className));
+        } catch (ClassNotFoundException e) {
+            return null;
+        }
     }
 
-    public static <T> T newInstance(String className, ClassLoader classLoader){
+    public static <T> T newInstance(String className, ClassLoader classLoader) {
         try {
-            Class<T> cls = (Class<T>) classLoader.loadClass(className);
+            Class<T> cls = loadClass(className, classLoader);
             return newInstance(cls);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static <T> T newInstance(String className, Class[] paramTypes, Object ... params){
-        return newInstance(className, Thread.currentThread().getContextClassLoader(), paramTypes, params);
+    public static <T> T newInstance(String className, Class[] paramTypes, Object... params) {
+        try {
+            return newInstance(loadClass(className), paramTypes, params);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public static <T> T newInstance(String className, ClassLoader classLoader, Class[] paramTypes, Object ... params){
+    public static <T> T newInstance(String className, ClassLoader classLoader, Class[] paramTypes, Object... params) {
         try {
-            Class<T> cls = (Class<T>) classLoader.loadClass(className);
+            Class<T> cls = loadClass(className, classLoader);
             return newInstance(cls, paramTypes, params);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static <T> T newInstance(Class<T> cls){
+    public static <T> T newInstance(Class<T> cls) {
         try {
             return cls.newInstance();
-        } catch (Exception err){
+        } catch (Exception err) {
             throw new RuntimeException(err);
         }
     }
 
-    public static <T> T newInstance(Class<T> cls, Class[] paramTypes, Object... params){
+    public static <T> T newInstance(Class<T> cls, Class[] paramTypes, Object... params) {
         try {
             Constructor<T> constructor = cls.getConstructor(paramTypes);
             constructor.setAccessible(true);
             return constructor.newInstance(params);
-        }catch (Exception err){
+        } catch (Exception err) {
             throw new RuntimeException(err);
-        }
-    }
-
-    public static URL[] listClassPath(URLClassLoader classLoader) {
-        try {
-            return invoke(classLoader, "getURLs", null);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -164,12 +186,12 @@ public class ClassUtil {
                 }
             }
             return value;
-        }catch (Exception err){
+        } catch (Exception err) {
             throw new RuntimeException(err);
         }
     }
 
-    public static void setFieldValue(Object obj, String fieldName, Object value){
+    public static void setFieldValue(Object obj, String fieldName, Object value) {
         try {
             Field field = obj.getClass().getDeclaredField(fieldName);
             if (field.isAccessible()) {
@@ -179,7 +201,7 @@ public class ClassUtil {
                 field.set(obj, value);
                 field.setAccessible(false);
             }
-        }catch (Exception err){
+        } catch (Exception err) {
             throw new RuntimeException(err);
         }
     }
@@ -240,6 +262,85 @@ public class ClassUtil {
 
     public static boolean isProtected(Object fieldOrMethod) {
         return java.lang.reflect.Modifier.isProtected((Integer) invoke(fieldOrMethod, "getModifiers", null));
+    }
+
+    public static boolean hasDefaultConstructor(Class<?> clazz) {
+        Class<?>[] params = {};
+        try {
+            Constructor constructor = clazz.getConstructor(params);
+            return true;
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
+    }
+
+    public static <T> Constructor<T> getConstructor(String className, Class ... paramTypes){
+        try {
+            return getConstructor(loadClass(className), paramTypes);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static <T> Constructor<T> getConstructor(Class<T> tClass, Class ... paramTypes){
+        try {
+            return tClass.getConstructor(paramTypes);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Class<?> getFieldClass(Class<?> clazz, String name) {
+        if (clazz == null || name == null || name.isEmpty()) {
+            return null;
+        }
+        name = name.toLowerCase();
+        Class<?> propertyClass = null;
+        for (Field field : clazz.getDeclaredFields()) {
+            field.setAccessible(true);
+            if (field.getName().equals(name)) {
+                propertyClass = field.getType();
+                break;
+            }
+        }
+        return propertyClass;
+    }
+
+    /**
+     * enum Constant{VALUE1, VALUE2, ...}
+     *
+     * @param clazz
+     * @param name
+     * @return
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static <T> T getEnumConstant(Class<?> enumClass, String name) {
+        if (enumClass == null || name == null || name.isEmpty()) {
+            return null;
+        }
+        return (T) Enum.valueOf((Class<Enum>) enumClass, name);
+    }
+
+
+    public static List<Method> findMethod(Class<?> clazz, String methodName) {
+        if (clazz==null || methodName==null || methodName.isEmpty()) {
+            return null;
+        }
+        List<Method> methodList = new ArrayList<Method>();
+        for (Method method : clazz.getDeclaredMethods()) {
+            if (method.getName().equalsIgnoreCase(methodName)) {
+                methodList.add(method);
+            }
+        }
+        return methodList;
+    }
+
+    public static URL[] listClassPath(URLClassLoader classLoader) {
+        try {
+            return invoke(classLoader, "getURLs", null);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

@@ -4,7 +4,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.lang.reflect.Method;
 import java.util.Date;
+import java.util.List;
 
 public class ClassUtilTest {
 
@@ -15,6 +17,19 @@ public class ClassUtilTest {
         public String name;
         private int age;
         protected String email;
+
+        public static enum Type {
+            NULL(0), STRING(1), INT(2), BOOLEAN(3);
+            int value;
+
+            Type(int value) {
+                this.value = value;
+            }
+
+            public int getValue() {
+                return value;
+            }
+        }
 
         public User() {
 
@@ -29,6 +44,14 @@ public class ClassUtilTest {
             this.name = name;
             this.age = age;
             this.email = email;
+        }
+
+        public int add(int a, int b){
+            return a+b;
+        }
+
+        public long add(long a, long b){
+            return a+b;
         }
 
         @Override
@@ -57,6 +80,9 @@ public class ClassUtilTest {
 
         User user = ClassUtil.invokeStaticMethod(User.class, "newUser", new Class[]{String.class, int.class, String.class}, "CHEN PENG", 12, "NIHAO");
         System.out.println(user);
+
+        boolean eq = ClassUtil.invoke("java", "equals", new Class[]{Object.class}, "java");
+        System.out.println("java.equals(java) = " + eq);
     }
 
     @Test
@@ -65,6 +91,8 @@ public class ClassUtilTest {
 
     @Test
     public void newInstance() {
+        Date value = ClassUtil.newInstance("java.util.Date");
+        System.out.println(value);
     }
 
     @Test
@@ -99,5 +127,22 @@ public class ClassUtilTest {
 
         User user2 = ClassUtil.newInstance(User.class, new Class[]{String.class, int.class, String.class}, "Chen MiaoXi", 7, "121");
         System.out.println(user2);
+    }
+
+    @Test
+    public void getEnumConstant(){
+        Object typeString = ClassUtil.getEnumConstant(User.Type.class, "STRING");
+        System.out.println(typeString);
+
+        Object value = ClassUtil.getStaticFieldValue(User.class, "Type");
+        System.out.println(value);
+    }
+
+    @Test
+    public void getMethodReturnType(){
+        List<Method> methods = ClassUtil.findMethod(User.class, "add");
+        for(Method method : methods){
+            System.out.println(method.getReturnType());
+        }
     }
 }

@@ -4,7 +4,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
 public class ReflectUtilTest {
 
@@ -30,6 +32,12 @@ public class ReflectUtilTest {
 
         long time = ReflectUtil.invoke(new Date(), "getTime", long.class);
         System.out.println("new Date().getTime()="+time);
+
+        boolean ret = ReflectUtil.invoke("java", "equals", boolean.class, new Class[]{Object.class}, "java");
+        System.out.println("java.equals(java)?"+ret);
+
+        List array = ReflectUtil.invokeStaticMethod(Arrays.class, "asList", List.class, new Class[]{Object[].class}, 1, 2, 3);
+        System.out.println(array);
     }
 
     @Test
