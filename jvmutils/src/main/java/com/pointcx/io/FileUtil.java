@@ -22,13 +22,17 @@ import java.util.List;
 
 public class FileUtil {
 
-    public static void copyFileUsingStream(File source, File dest) throws IOException {
+    public static void copyFileUsingStream(File source, File dest) throws IOException{
+        copyFileUsingStream(source, dest, 2* 1024);
+    }
+
+    public static void copyFileUsingStream(File source, File dest, int bufferSize) throws IOException {
         InputStream is = null;
         OutputStream os = null;
         try {
             is = new FileInputStream(source);
             os = new FileOutputStream(dest);
-            byte[] buffer = new byte[1024];
+            byte[] buffer = new byte[bufferSize];
             int length;
             while ((length = is.read(buffer)) > 0) {
                 os.write(buffer, 0, length);

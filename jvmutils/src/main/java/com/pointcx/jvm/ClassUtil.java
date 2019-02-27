@@ -1,12 +1,151 @@
 package com.pointcx.jvm;
 
+import sun.net.www.protocol.file.FileURLConnection;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.JarURLConnection;
 import java.net.URL;
-import java.net.URLClassLoader;
+import java.net.URLConnection;
+import java.net.URLDecoder;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.function.Function;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+
+class ClassScanUtil{
+    /**
+     * Private helper method
+     *
+     * @param directory
+     *            The directory to start with
+     * @param pckgname
+     *            The package name to search for. Will be needed for getting the
+     *            Class object.
+     * @throws ClassNotFoundException
+     */
+    private static void checkDirectory(File directory, String pckgname, Function<Class<?>, Void> fn){
+        File tmpDirectory;
+
+        if (directory.exists() && directory.isDirectory()) {
+            final String[] files = directory.list();
+
+            for (final String file : files) {
+                if (file.endsWith(".class")) {
+                    try {
+                        String className = pckgname+'.'+file.substring(0, file.length()-6);
+                        className = className.startsWith(".")?className.substring(1, className.length()):className;
+                        fn.apply(Class.forName(className));
+                    } catch (final NoClassDefFoundError e) {
+                        // do nothing. this class hasn't been found by the
+                        // loader, and we don't care.
+                    } catch (ClassNotFoundException e) {
+                        // ignore it
+                    }
+                } else if ((tmpDirectory = new File(directory, file)).isDirectory()) {
+                    checkDirectory(tmpDirectory, pckgname + "." + file, fn);
+                }
+            }
+        }
+    }
+
+    /**
+     * Private helper method.
+     *
+     * @param connection
+     *            the connection to the jar
+     * @param pckgname
+     *            the package name to search for
+     * @throws ClassNotFoundException
+     *             if a file isn't loaded but still is in the jar file
+     * @throws IOException
+     *             if it can't correctly read from the jar file.
+     */
+    private static void checkJarFile(JarURLConnection connection,
+                                     String pckgname, Function<Class<?>, Void> fn) throws IOException {
+        final JarFile jarFile = connection.getJarFile();
+        final Enumeration<JarEntry> entries = jarFile.entries();
+        String name;
+
+        for (JarEntry jarEntry = null; entries.hasMoreElements()
+                && ((jarEntry = entries.nextElement()) != null);) {
+            name = jarEntry.getName();
+
+            if (name.contains(".class")) {
+                name = name.substring(0, name.length() - 6).replace('/', '.');
+
+                if (name.contains(pckgname)) {
+                    try {
+                        fn.apply(Class.forName(name));
+                    } catch (ClassNotFoundException e) {
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Attempts to list all the classes in the specified package as determined
+     * by the context class loader
+     *
+     * @param pckgname
+     *            the package name to search
+     * @return a list of classes that exist within that package
+     * @throws ClassNotFoundException
+     *             if something went wrong
+     */
+    public static void scan(ClassLoader cld, String pckgname, Function<Class<?>, Void> fn){
+        final ArrayList<Class<?>> classes = new ArrayList<Class<?>>();
+        try {
+            if (cld == null)
+                throw new IllegalArgumentException("'ClassLoader' can not be null");
+            final String scannedPath = pckgname.replace('.', '/');
+            final Enumeration<URL> resources = cld.getResources(scannedPath);
+            URLConnection connection;
+
+            for (URL url = null; resources.hasMoreElements()
+                    && ((url = resources.nextElement()) != null);) {
+                try {
+                    connection = url.openConnection();
+                    if (connection instanceof JarURLConnection) {
+                        checkJarFile((JarURLConnection) connection, pckgname, fn);
+                    } else if (connection instanceof FileURLConnection) {
+                        try {
+                            checkDirectory(new File(URLDecoder.decode(url.getPath(),"UTF-8")), pckgname, fn);
+                        } catch (final UnsupportedEncodingException ex) {
+                            throw new RuntimeException(
+                                    pckgname
+                                            + " does not appear to be a valid package (Unsupported encoding)",
+                                    ex);
+                        }
+                    } else
+                        throw new RuntimeException(pckgname + " ("
+                                + url.getPath()
+                                + ") does not appear to be a valid package");
+                } catch (final IOException ioex) {
+                    throw new RuntimeException(
+                            "IOException was thrown when trying to get all resources for "
+                                    + pckgname, ioex);
+                }
+            }
+        } catch (final NullPointerException ex) {
+            throw new RuntimeException(
+                    pckgname
+                            + " does not appear to be a valid package (Null pointer exception)",
+                    ex);
+        } catch (final IOException ioex) {
+            throw new RuntimeException(
+                    "IOException was thrown when trying to get all resources for "
+                            + pckgname, ioex);
+        }
+    }
+}
 
 public class ClassUtil {
 
@@ -335,12 +474,26 @@ public class ClassUtil {
         return methodList;
     }
 
-    public static URL[] listClassPath(URLClassLoader classLoader) {
+    public static List<URL> getResources(String resourceName){
+        return getResources(resourceName, Thread.currentThread().getContextClassLoader());
+    }
+
+    public static List<URL> getResources(String resourceName, ClassLoader classLoader) {
+        List<URL> urlList = new ArrayList<>();
         try {
-            return invoke(classLoader, "getURLs", null);
-        } catch (Exception e) {
+            Enumeration<URL> urls = classLoader.getResources(resourceName);
+            if(urls!=null){
+                for(;urls.hasMoreElements();){
+                    urlList.add(urls.nextElement());
+                }
+            }
+            return urlList;
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
+    public static void forEach(ClassLoader classLoader, Function<Class<?>, Void> fn){
+        ClassScanUtil.scan(classLoader, "", fn);
+    }
 }

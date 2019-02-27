@@ -4,9 +4,13 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.function.Function;
 
 public class ClassUtilTest {
 
@@ -144,5 +148,20 @@ public class ClassUtilTest {
         for(Method method : methods){
             System.out.println(method.getReturnType());
         }
+    }
+
+    @Test
+    public void forEach() throws IOException {
+        Enumeration<URL> urls = ClassLoader.getSystemClassLoader().getResources("");
+        for(;urls.hasMoreElements();){
+            System.out.println(urls.nextElement());
+        }
+        ClassUtil.forEach(Thread.currentThread().getContextClassLoader(), new Function<Class<?>, Void>() {
+            @Override
+            public Void apply(Class<?> aClass) {
+                System.out.println(aClass);
+                return null;
+            }
+        });
     }
 }
